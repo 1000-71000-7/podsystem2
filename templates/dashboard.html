@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Монитор обращений граждан - Корпоративная аналитика</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: #0a0e27;
+            color: #ffffff;
+            overflow-x: hidden;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        /* ========== ТЁМНАЯ ТЕМА (ПО УМОЛЧАНИЮ) ========== */
+        body.dark {
+            background: #0a0e27;
+            color: #ffffff;
+        }
+
+        /* ========== СВЕТЛАЯ ТЕМА ========== */
+        body:not(.dark) {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+
+        body:not(.dark) .header {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        body:not(.dark) .header h1 {
+            -webkit-text-fill-color: #0f172a;
+            background: none;
+            color: #0f172a;
+        }
+
+        body:not(.dark) .header p {
+            color: #475569;
+        }
+
+        body:not(.dark) .stat-badge {
+            background: rgba(0, 0, 0, 0.05);
+            color: #1e293b;
+        }
+
+        body:not(.dark) .user-info-bar,
+        body:not(.dark) .filter-panel,
+        body:not(.dark) .comparison-panel,
+        body:not(.dark) .metric-card,
+        body:not(.dark) .chart-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+        }
+
+        body:not(.dark) .metric-title,
+        body:not(.dark) .chart-title {
+            color: #1e293b;
+        }
+
+        body:not(.dark) .metric-value {
+            color: #0f172a;
+        }
+
+        body:not(.dark) .metric-sub,
+        body:not(.dark) .filter-group label {
+            color: #64748b;
+        }
+
+        body:not(.dark) .filter-group input,
+        body:not(.dark) .filter-group select {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #0f172a;
+        }
+
+        body:not(.dark) .filter-group input:focus,
+        body:not(.dark) .filter-group select:focus {
+            border-color: #dc2626;
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1);
+        }
+
+        body:not(.dark) .refresh-btn {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            color: #1e293b;
+        }
+
+        body:not(.dark) .refresh-btn:hover {
+            background: #dc2626;
+            color: white;
+            border-color: #dc2626;
+        }
+
+        body:not(.dark) .comparison-card {
+            background: #f8fafc;
+        }
+
+        body:not(.dark) .comparison-card h4 {
+            color: #475569;
+        }
+
+        body:not(.dark) .vital-item {
+            background: #f8fafc;
+        }
+
+        body:not(.dark) .vital-label {
+            color: #64748b;
+        }
+
+        body:not(.dark) .anomaly-item,
+        body:not(.dark) .alert-item {
+            background: #f8fafc;
+        }
+
+        body:not(.dark) .anomaly-info p {
+            color: #64748b;
+        }
+
+        body:not(.dark) .journey-item {
+            background: #f8fafc;
+        }
+
+        body:not(.dark) .journey-step {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            color: #1e293b;
+        }
+
+        body:not(.dark) .footer {
+            border-top-color: #e2e8f0;
+            color: #94a3b8;
+        }
+
+        body:not(.dark) .loading {
+            color: #64748b;
+        }
+
+        body:not(.dark) .chart-export-btn {
+            background: #dc2626;
+            color: white;
+        }
+
+        body:not(.dark) .chart-export-btn:hover {
+            background: #b91c1c;
+        }
+
+        /* ========== АНИМАЦИИ ========== */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        /* ========== HEADER ========== */
+        .header {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3e 50%, #0d1130 100%);
+            padding: 25px 30px;
+            border-bottom: 2px solid #2a1e3a;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 60%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(220, 38, 38, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.05);
+            padding: 6px 14px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* ========== КНОПКА ТЕМЫ ========== */
+        .theme-toggle {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+            z-index: 1000;
+            transition: all 0.3s;
+            color: white;
+        }
+        .theme-toggle:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4); }
+
+        /* ========== USER INFO BAR ========== */
+        .user-info-bar {
+            background: linear-gradient(135deg, #13183f 0%, #0d1130 100%);
+            border-radius: 16px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .user-name { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .user-role {
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .role-admin { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; }
+        .role-analyst { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; }
+        .role-viewer { background: linear-gradient(135deg, #16a34a, #15803d); color: white; }
+        .user-actions { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+        .user-actions a { text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+        .profile-link { color: #60a5fa; }
+        .profile-link:hover { color: #93c5fd; }
+        .logout-link { color: #f87171; }
+        .logout-link:hover { color: #fca5a5; }
+        .admin-link { color: #fbbc04; }
+        .admin-link:hover { color: #fde047; }
+
+        /* ========== CONTAINER ========== */
+        .container { max-width: 1400px; margin: 0 auto; padding: 0 24px 40px; }
+
+        /* ========== FILTER PANEL ========== */
+        .filter-panel {
+            background: linear-gradient(135deg, #13183f 0%, #0d1130 100%);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(220, 38, 38, 0.15);
+            transition: all 0.3s ease;
+        }
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .filter-group label {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .filter-group input, .filter-group select {
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(10, 14, 39, 0.8);
+            color: white;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        .filter-group input:focus, .filter-group select:focus {
+            outline: none;
+            border-color: #dc2626;
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+        }
+        .compare-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 5px;
+        }
+        .compare-group label { cursor: pointer; text-transform: none; }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-primary { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(220, 38, 38, 0.3); }
+        .btn-success { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; }
+        .btn-success:hover { transform: translateY(-2px); }
+        .refresh-btn {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.08);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .refresh-btn:hover { background: rgba(220, 38, 38, 0.2); border-color: #dc2626; }
+        .export-panel { display: flex; gap: 10px; margin-left: auto; }
+
+        /* ========== COMPARISON PANEL ========== */
+        .comparison-panel {
+            background: linear-gradient(135deg, #13183f 0%, #0d1130 100%);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            display: none;
+            border: 1px solid rgba(220, 38, 38, 0.15);
+            transition: all 0.3s ease;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .comparison-card {
+            padding: 18px;
+            border-radius: 14px;
+            background: rgba(10, 14, 39, 0.6);
+            backdrop-filter: blur(10px);
+        }
+        .comparison-card.period1 { border-left: 3px solid #2563eb; }
+        .comparison-card.period2 { border-left: 3px solid #94a3b8; }
+        .comparison-card.changes { border-left: 3px solid #dc2626; }
+        .comparison-card h4 { margin-bottom: 12px; font-size: 14px; color: #94a3b8; }
+        .change-positive { color: #22c55e; }
+        .change-negative { color: #ef4444; }
+
+        /* ========== METRICS GRID ========== */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .metric-card {
+            background: linear-gradient(135deg, #13183f 0%, #0d1130 100%);
+            border-radius: 20px;
+            padding: 22px;
+            transition: all 0.3s;
+            border: 1px solid rgba(220, 38, 38, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #dc2626, #2563eb, #dc2626);
+        }
+        .metric-card:hover { transform: translateY(-5px); border-color: rgba(220, 38, 38, 0.3); }
+        .metric-icon { font-size: 32px; margin-bottom: 12px; }
+        .metric-title { font-size: 12px; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        .metric-value { font-size: 36px; font-weight: 800; color: white; }
+        .metric-sub { font-size: 11px; color: #64748b; margin-top: 8px; }
+
+        /* ========== CHARTS ========== */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+        .chart-card {
+            background: linear-gradient(135deg, #13183f 0%, #0d1130 100%);
+            border-radius: 20px;
+            padding: 24px;
+            border: 1px solid rgba(220, 38, 38, 0.15);
+            transition: all 0.3s;
+        }
+        .chart-card:hover { border-color: rgba(220, 38, 38, 0.3); }
+        .chart-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            color: #e2e8f0;
+        }
+        .chart-title span:first-child { flex: 1; }
+        .badge {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-weight: 600;
+        }
+        .chart-export-btn {
+            padding: 4px 12px;
+            font-size: 11px;
+            background: rgba(220, 38, 38, 0.8);
+            border: none;
+            border-radius: 30px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .chart-export-btn:hover {
+            background: #dc2626;
+            transform: scale(1.02);
+        }
+        canvas { max-height: 280px; width: 100%; }
+
+        /* ========== VITALS ========== */
+        .vitals-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .vital-item {
+            text-align: center;
+            padding: 14px;
+            background: rgba(10, 14, 39, 0.6);
+            border-radius: 14px;
+            backdrop-filter: blur(10px);
+        }
+        .vital-value { font-size: 24px; font-weight: 800; }
+        .vital-label { font-size: 11px; color: #64748b; margin-top: 6px; }
+        .rating-good { color: #22c55e; }
+        .rating-needs { color: #eab308; }
+        .rating-poor { color: #ef4444; }
+
+        /* ========== FUNNEL ========== */
+        .funnel-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .funnel-stat-value { font-size: 24px; font-weight: 800; color: #dc2626; }
+
+        /* ========== ANOMALIES & ALERTS ========== */
+        .anomaly-item, .alert-item {
+            padding: 14px;
+            margin-bottom: 12px;
+            border-radius: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+        .anomaly-high { background: rgba(220, 38, 38, 0.15); border-left: 3px solid #dc2626; }
+        .anomaly-medium { background: rgba(234, 179, 8, 0.15); border-left: 3px solid #eab308; }
+        .anomaly-low { background: rgba(37, 99, 235, 0.15); border-left: 3px solid #2563eb; }
+        .alert-item { background: rgba(255,255,255,0.05); border-left: 3px solid #eab308; }
+        .anomaly-info h4 { font-size: 14px; margin-bottom: 5px; }
+        .anomaly-info p { font-size: 11px; color: #94a3b8; }
+        .severity-badge {
+            font-size: 10px;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .severity-high { background: #dc2626; color: white; }
+        .severity-medium { background: #eab308; color: #0a0e27; }
+        .severity-low { background: #2563eb; color: white; }
+
+        /* ========== JOURNEYS ========== */
+        .journey-item {
+            background: rgba(10, 14, 39, 0.6);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 12px;
+            backdrop-filter: blur(10px);
+        }
+        .journey-steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .journey-step {
+            background: rgba(255,255,255,0.08);
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 11px;
+            color: #94a3b8;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .journey-step::after { content: "→"; margin-left: 12px; color: #dc2626; }
+        .journey-step:last-child::after { content: ""; }
+
+        /* ========== FOOTER ========== */
+        .footer {
+            text-align: center;
+            padding: 24px;
+            color: #64748b;
+            font-size: 12px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            margin-top: 30px;
+        }
+        .ws-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .ws-connected { background: #22c55e; box-shadow: 0 0 8px #22c55e; animation: pulse 2s infinite; }
+        .ws-disconnected { background: #ef4444; }
+
+        /* ========== МОБИЛЬНАЯ АДАПТАЦИЯ ========== */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 22px; }
+            .header-stats { flex-direction: column; gap: 8px; }
+            .user-info-bar { flex-direction: column; text-align: center; }
+            .filter-row { flex-direction: column; }
+            .filter-group { width: 100%; }
+            .filter-group input, .filter-group select { width: 100%; }
+            .export-panel { margin-left: 0; justify-content: center; width: 100%; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .metric-value { font-size: 24px; }
+            .metric-card { padding: 16px; }
+            .charts-grid { grid-template-columns: 1fr; }
+            .chart-card { padding: 16px; }
+            .vitals-row { grid-template-columns: 1fr; gap: 10px; }
+            .comparison-grid { grid-template-columns: 1fr; gap: 12px; }
+            .theme-toggle { width: 44px; height: 44px; bottom: 20px; right: 20px; }
+            .container { padding: 0 16px 30px; }
+            .chart-title { flex-direction: column; align-items: flex-start; }
+            .chart-export-btn { align-self: flex-end; }
+        }
+
+        @media (max-width: 480px) {
+            .metrics-grid { grid-template-columns: 1fr; }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+        }
+
+        .top-pages-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .top-pages-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .key-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .key-metric-card {
+            text-align: center;
+            padding: 15px;
+            background: rgba(220, 38, 38, 0.1);
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>МОНИТОР ОБРАЩЕНИЙ ГРАЖДАН</h1>
+            <p>Корпоративная система аналитики и мониторинга в реальном времени</p>
+            <div class="header-stats">
+                <div class="stat-badge">152-ФЗ Контроль данных</div>
+                <div class="stat-badge">Core Web Vitals</div>
+                <div class="stat-badge">Воронка конверсии</div>
+                <div class="stat-badge">Анализ устройств</div>
+                <div class="stat-badge">🔌 WebSocket: <span id="wsStatus" class="ws-indicator ws-disconnected"></span> <span id="wsStatusText">подключение...</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- User Info Bar -->
+        <div class="user-info-bar animate-in">
+            <div class="user-info">
+                <span class="user-name">👤 {{ user.username }}</span>
+                <span class="user-role
+                    {% if user.role == 'admin' %}role-admin
+                    {% elif user.role == 'analyst' %}role-analyst
+                    {% else %}role-viewer{% endif %}">
+                    {% if user.role == 'admin' %}👑 АДМИНИСТРАТОР
+                    {% elif user.role == 'analyst' %}📊 АНАЛИТИК
+                    {% else %}👁️ НАБЛЮДАТЕЛЬ{% endif %}
+                </span>
+                {% if user.email %}
+                <span style="font-size: 11px; color: #64748b;">📧 {{ user.email }}</span>
+                {% endif %}
+            </div>
+            <div class="user-actions">
+                {% if user.role == 'admin' %}
+                    <a href="{{ url_for('admin_users') }}" class="admin-link">👥 Управление пользователями</a>
+                {% endif %}
+                <a href="{{ url_for('profile') }}" class="profile-link">⚙️ Профиль</a>
+                <a href="{{ url_for('logout') }}" class="logout-link">🚪 Выйти</a>
+            </div>
+        </div>
+
+        <!-- Filter Panel -->
+        <div class="filter-panel animate-in">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>🏢 Сайт</label>
+                    <select id="siteSelect">
+                        {% for site in sites %}
+                        <option value="{{ site.id }}">{{ site.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>📅 Период</label>
+                    <select id="periodSelect">
+                        <option value="7">За 7 дней</option>
+                        <option value="30" selected>За 30 дней</option>
+                        <option value="90">За 90 дней</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>📆 Дата с</label>
+                    <input type="date" id="dateFrom">
+                </div>
+                <div class="filter-group">
+                    <label>📆 Дата по</label>
+                    <input type="date" id="dateTo">
+                </div>
+                <div class="compare-group">
+                    <input type="checkbox" id="compareCheckbox">
+                    <label for="compareCheckbox">📊 Сравнить с предыдущим периодом</label>
+                </div>
+                <button class="btn btn-primary" onclick="applyFilters()">🔍 Применить фильтр</button>
+                <div class="export-panel">
+                    <button class="btn btn-success" onclick="exportData('csv')">📄 CSV</button>
+                    <button class="btn btn-success" onclick="exportData('xlsx')">📊 Excel</button>
+                    <button class="btn btn-success" onclick="exportData('pdf')">📑 PDF</button>
+                </div>
+                <button class="refresh-btn" onclick="refreshAll()">🔄 Обновить</button>
+            </div>
+        </div>
+
+        <!-- Comparison Panel -->
+        <div class="comparison-panel" id="comparisonPanel">
+            <h3 style="margin-bottom: 15px;">📊 Сравнение периодов</h3>
+            <div class="comparison-grid">
+                <div class="comparison-card period1">
+                    <h4>📅 ТЕКУЩИЙ ПЕРИОД</h4>
+                    <div id="period1Stats"></div>
+                </div>
+                <div class="comparison-card period2">
+                    <h4>📅 ПРЕДЫДУЩИЙ ПЕРИОД</h4>
+                    <div id="period2Stats"></div>
+                </div>
+                <div class="comparison-card changes">
+                    <h4>📈 ИЗМЕНЕНИЕ</h4>
+                    <div id="comparisonChanges"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="metrics-grid">
+            <div class="metric-card"><div class="metric-icon">📄</div><div class="metric-title">ПРОСМОТРЫ СТРАНИЦ</div><div class="metric-value" id="totalViews">—</div><div class="metric-sub">за выбранный период</div></div>
+            <div class="metric-card"><div class="metric-icon">📝</div><div class="metric-title">НАЧАЛИ ЗАПОЛНЕНИЕ</div><div class="metric-value" id="totalFormStarts">—</div><div class="metric-sub">перешли к форме</div></div>
+            <div class="metric-card"><div class="metric-icon">✅</div><div class="metric-title">ОТПРАВЛЕНО ОБРАЩЕНИЙ</div><div class="metric-value" id="totalSubmits">—</div><div class="metric-sub">успешно отправлено</div></div>
+            <div class="metric-card"><div class="metric-icon">📊</div><div class="metric-title">КОНВЕРСИЯ В ОБРАЩЕНИЕ</div><div class="metric-value" id="conversionRate">—</div><div class="metric-sub">от общего числа визитов</div></div>
+            <div class="metric-card"><div class="metric-icon">🎯</div><div class="metric-title">ФОРМ → ОТПРАВКА</div><div class="metric-value" id="formConversion">—</div><div class="metric-sub">дошли до отправки</div></div>
+            <div class="metric-card"><div class="metric-icon">👥</div><div class="metric-title">УНИКАЛЬНЫЕ ПОСЕТИТЕЛИ</div><div class="metric-value" id="uniqueSessions">—</div><div class="metric-sub">за период</div></div>
+        </div>
+
+        <!-- NEW: Extended Analytics Row 1 -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>📱 УСТРОЙСТВА ПОЛЬЗОВАТЕЛЕЙ</span>
+                    <span class="badge">СЕГМЕНТАЦИЯ</span>
+                </div>
+                <canvas id="deviceChart" style="max-height: 250px;"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>⏰ АКТИВНОСТЬ ПО ЧАСАМ</span>
+                    <span class="badge">ПИКОВЫЕ НАГРУЗКИ</span>
+                </div>
+                <canvas id="hourlyChart" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+
+        <!-- NEW: Extended Analytics Row 2 -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>🔥 ПОПУЛЯРНЫЕ СТРАНИЦЫ</span>
+                    <span class="badge">ТОП-10</span>
+                </div>
+                <div id="topPagesList" class="top-pages-list">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>📊 КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ</span>
+                    <span class="badge">ЭФФЕКТИВНОСТЬ</span>
+                </div>
+                <div id="keyMetrics">
+                    <div class="loading">Загрузка...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 (existing) -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>📈 ДИНАМИКА ОБРАЩЕНИЙ</span>
+                    <span class="badge">ТРЕНД</span>
+                    <button class="chart-export-btn" onclick="exportChartAsPNG('trendsChart', 'dinamika_obrasheniy')">📸 Скачать PNG</button>
+                </div>
+                <canvas id="trendsChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>⚡ CORE WEB VITALS</span>
+                    <span class="badge">РЕАЛЬНЫЕ ПОЛЬЗОВАТЕЛИ</span>
+                    <button class="chart-export-btn" onclick="exportChartAsPNG('vitalsChart', 'core_web_vitals')">📸 Скачать PNG</button>
+                </div>
+                <canvas id="vitalsChart"></canvas>
+                <div class="vitals-row" id="vitalsRatings"></div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 (existing) -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>📊 ВОРОНКА ЗАПОЛНЕНИЯ ФОРМЫ</span>
+                    <span class="badge">АНАЛИЗ КОНВЕРСИИ</span>
+                    <button class="chart-export-btn" onclick="exportChartAsPNG('funnelChart', 'voronka_konversii')">📸 Скачать PNG</button>
+                </div>
+                <canvas id="funnelChart" style="max-height: 250px;"></canvas>
+                <div class="funnel-stats" id="funnelStats"></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>🔍 АКТИВНЫЕ АНОМАЛИИ</span>
+                    <span class="badge">АВТООБНАРУЖЕНИЕ</span>
+                </div>
+                <div id="anomaliesList"><div class="loading">Загрузка...</div></div>
+            </div>
+        </div>
+
+        <!-- Full width sections (existing) -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>⚠️ ПОСЛЕДНИЕ ОПОВЕЩЕНИЯ</span>
+                    <span class="badge">СИСТЕМА АЛЕРТОВ</span>
+                </div>
+                <div id="alertsList"><div class="loading">Загрузка...</div></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span>🚶 ПУТИ ПОЛЬЗОВАТЕЛЕЙ</span>
+                    <span class="badge">USER JOURNEY</span>
+                </div>
+                <div id="journeysList"><div class="loading">Загрузка...</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>© 2026 Монитор обращений граждан | Собственная разработка | WebSocket реальное время | Данные на серверах организации</p>
+        <p>Последнее обновление: <span id="lastUpdate">—</span></p>
+    </div>
+
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" id="themeToggle" title="Сменить тему">🌓</button>
+
+    <script>
+        // Chart instances
+        let trendsChart = null;
+        let vitalsChart = null;
+        let funnelChart = null;
+        let deviceChart = null;
+        let hourlyChart = null;
+
+        // WebSocket
+        let socket = null;
+        let currentSiteId = null;
+
+        // ========== ТЁМНАЯ ТЕМА ==========
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.body.classList.remove('dark');
+            } else if (savedTheme === 'dark') {
+                document.body.classList.add('dark');
+            } else {
+                document.body.classList.add('dark');
+            }
+        }
+
+        function toggleTheme() {
+            if (document.body.classList.contains('dark')) {
+                document.body.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.body.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            if (trendsChart) trendsChart.update();
+            if (vitalsChart) vitalsChart.update();
+            if (funnelChart) funnelChart.update();
+            if (deviceChart) deviceChart.update();
+            if (hourlyChart) hourlyChart.update();
+        }
+
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        initTheme();
+
+        // ========== HELPER FUNCTIONS ==========
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '—';
+            return num.toLocaleString('ru-RU');
+        }
+
+        function getRatingClass(rating) {
+            if (rating === 'good') return 'rating-good';
+            if (rating === 'needs_improvement') return 'rating-needs';
+            return 'rating-poor';
+        }
+
+        function getRatingText(rating) {
+            if (rating === 'good') return '✅ Хорошо';
+            if (rating === 'needs_improvement') return '⚠️ Требует улучшения';
+            return '🔴 Плохо';
+        }
+
+        function updateTimestamp() {
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('ru-RU');
+        }
+
+        function showNotification(title, body) {
+            if (Notification.permission === 'granted') {
+                new Notification(title, { body: body });
+            }
+        }
+
+        // ========== ЭКСПОРТ ГРАФИКОВ В PNG ==========
+        function exportChartAsPNG(chartId, filename) {
+            const canvas = document.getElementById(chartId);
+            if (!canvas) {
+                console.error('Canvas not found:', chartId);
+                return;
+            }
+            const link = document.createElement('a');
+            const date = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            link.download = `${filename}_${date}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            console.log(`График "${filename}" экспортирован`);
+        }
+
+        // ========== WEBSOCKET ==========
+        function initWebSocket() {
+            socket = io();
+            socket.on('connect', function() {
+                console.log('WebSocket connected');
+                document.getElementById('wsStatus').className = 'ws-indicator ws-connected';
+                document.getElementById('wsStatusText').textContent = 'подключён';
+                if (currentSiteId) subscribeToSite(currentSiteId);
+            });
+            socket.on('disconnect', function() {
+                console.log('WebSocket disconnected');
+                document.getElementById('wsStatus').className = 'ws-indicator ws-disconnected';
+                document.getElementById('wsStatusText').textContent = 'отключён';
+            });
+            socket.on('metrics_update', function(data) {
+                console.log('Metrics update:', data);
+                if (data.site_id == currentSiteId && data.data) {
+                    if (data.data.total_views) document.getElementById('totalViews').textContent = formatNumber(data.data.total_views);
+                    if (data.data.total_submits) document.getElementById('totalSubmits').textContent = formatNumber(data.data.total_submits);
+                    if (data.data.conversion_rate) document.getElementById('conversionRate').textContent = data.data.conversion_rate + '%';
+                    refreshAll();
+                }
+            });
+            socket.on('new_event', function(data) {
+                console.log('New event:', data);
+                if (data.site_id == currentSiteId) refreshAll();
+            });
+            socket.on('new_alert', function(data) {
+                console.log('New alert:', data);
+                loadAlerts();
+            });
+        }
+
+        function subscribeToSite(siteId) {
+            if (currentSiteId) socket.emit('unsubscribe', { site_id: currentSiteId });
+            currentSiteId = siteId;
+            socket.emit('subscribe', { site_id: siteId });
+        }
+
+        // ========== DATA LOADING (existing) ==========
+        async function loadOverview() {
+            const siteId = document.getElementById('siteSelect').value;
+            const days = document.getElementById('periodSelect').value;
+            const resp = await fetch(`/api/metrics/overview?site_id=${siteId}&days=${days}`);
+            const data = await resp.json();
+            document.getElementById('totalViews').textContent = formatNumber(data.total_views);
+            document.getElementById('totalFormStarts').textContent = formatNumber(data.total_form_starts);
+            document.getElementById('totalSubmits').textContent = formatNumber(data.total_submits);
+            document.getElementById('conversionRate').textContent = data.conversion_rate + '%';
+            document.getElementById('formConversion').textContent = data.form_conversion + '%';
+            document.getElementById('uniqueSessions').textContent = formatNumber(data.unique_sessions);
+            return data;
+        }
+
+        async function loadTrends() {
+            const siteId = document.getElementById('siteSelect').value;
+            const days = document.getElementById('periodSelect').value;
+            const resp = await fetch(`/api/metrics/trends?site_id=${siteId}&days=${days}`);
+            const data = await resp.json();
+            if (trendsChart) trendsChart.destroy();
+            trendsChart = new Chart(document.getElementById('trendsChart'), {
+                type: 'line',
+                data: {
+                    labels: data.dates,
+                    datasets: [
+                        { label: 'Просмотры', data: data.pageviews, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.05)', tension: 0.4, fill: true, borderWidth: 2 },
+                        { label: 'Начали форму', data: data.form_starts, borderColor: '#eab308', backgroundColor: 'rgba(234,179,8,0.05)', tension: 0.4, fill: true, borderWidth: 2 },
+                        { label: 'Отправки', data: data.submits, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.05)', tension: 0.4, fill: true, borderWidth: 2 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: true, interaction: { mode: 'index', intersect: false }, plugins: { legend: { position: 'top', labels: { color: '#94a3b8' } } } }
+            });
+        }
+
+        async function loadWebVitals() {
+            const siteId = document.getElementById('siteSelect').value;
+            const days = document.getElementById('periodSelect').value;
+            const resp = await fetch(`/api/performance/web-vitals?site_id=${siteId}&days=${days}`);
+            const data = await resp.json();
+            document.getElementById('vitalsRatings').innerHTML = `
+                <div class="vital-item"><div class="vital-value ${getRatingClass(data.ratings?.good > data.ratings?.poor ? 'rating-good' : 'rating-poor')}">LCP</div><div class="vital-label">${getRatingText(data.ratings?.good > data.ratings?.poor ? 'good' : 'poor')}</div></div>
+                <div class="vital-item"><div class="vital-value">📊</div><div class="vital-label">Хороших: ${data.ratings?.good || 0}</div></div>
+                <div class="vital-item"><div class="vital-value">⚠️</div><div class="vital-label">Требуют улучшения: ${data.ratings?.needs_improvement || 0}</div></div>
+            `;
+            if (vitalsChart) vitalsChart.destroy();
+            vitalsChart = new Chart(document.getElementById('vitalsChart'), {
+                type: 'line',
+                data: { labels: data.dates, datasets: [{ label: 'LCP (мс) — меньше лучше', data: data.lcp_avg, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.4, fill: true }] },
+                options: { responsive: true, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}мс` } } }, scales: { y: { title: { display: true, text: 'Миллисекунды', color: '#94a3b8' }, min: 0 } } }
+            });
+        }
+
+        async function loadFunnel() {
+            const siteId = document.getElementById('siteSelect').value;
+            const days = document.getElementById('periodSelect').value;
+            const resp = await fetch(`/api/forms/funnel?site_id=${siteId}&days=${days}`);
+            const data = await resp.json();
+            document.getElementById('funnelStats').innerHTML = `
+                <div class="funnel-stat"><div class="funnel-stat-value">${data.total_form_starts}</div><div class="metric-sub">Начали форму</div></div>
+                <div class="funnel-stat"><div class="funnel-stat-value">${data.conversion_rate}%</div><div class="metric-sub">Конверсия</div></div>
+                <div class="funnel-stat"><div class="funnel-stat-value">${data.avg_fill_time_seconds || '—'}с</div><div class="metric-sub">Среднее время</div></div>
+            `;
+            if (funnelChart) funnelChart.destroy();
+            funnelChart = new Chart(document.getElementById('funnelChart'), {
+                type: 'bar',
+                data: { labels: data.completion_breakdown.map(d => d.range), datasets: [{ label: 'Пользователи', data: data.completion_breakdown.map(d => d.count), backgroundColor: '#dc2626', borderRadius: 10 }] },
+                options: { responsive: true, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw} пользователей` } } } }
+            });
+        }
+
+        async function loadAnomalies() {
+            const siteId = document.getElementById('siteSelect').value;
+            const resp = await fetch(`/api/anomalies/active?site_id=${siteId}`);
+            const anomalies = await resp.json();
+            const container = document.getElementById('anomaliesList');
+            if (anomalies.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:30px; color:#22c55e;">✅ Активных аномалий не обнаружено</div>';
+                return;
+            }
+            container.innerHTML = anomalies.map(a => `
+                <div class="anomaly-item anomaly-${a.severity}">
+                    <div><h4>📊 ${a.metric === 'pageviews' ? 'Просмотры' : 'Отправки форм'}</h4><p>Ожидалось: ${a.expected} | Факт: ${a.actual} | Отклонение: ${a.deviation_sigma}σ</p></div>
+                    <span class="severity-badge severity-${a.severity}">${a.severity === 'high' ? 'КРИТИЧНО' : a.severity === 'medium' ? 'ВНИМАНИЕ' : 'ОТКЛОНЕНИЕ'}</span>
+                </div>
+            `).join('');
+        }
+
+        async function loadAlerts() {
+            const siteId = document.getElementById('siteSelect').value;
+            const resp = await fetch(`/api/alerts/latest?site_id=${siteId}&limit=5`);
+            const alerts = await resp.json();
+            const container = document.getElementById('alertsList');
+            if (alerts.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:30px; color:#64748b;">📭 Нет оповещений</div>';
+                return;
+            }
+            container.innerHTML = alerts.map(a => `<div class="alert-item"><div class="alert-message">${a.message || a.metric_name + ': ' + a.value}</div><div class="alert-time">${a.created_at}</div></div>`).join('');
+        }
+
+        async function loadJourneys() {
+            const siteId = document.getElementById('siteSelect').value;
+            const resp = await fetch(`/api/journey/latest?site_id=${siteId}&limit=3`);
+            const journeys = await resp.json();
+            const container = document.getElementById('journeysList');
+            if (journeys.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:30px; color:#64748b;">🚶 Нет данных о путях пользователей</div>';
+                return;
+            }
+            container.innerHTML = journeys.map(j => `
+                <div class="journey-item"><div><strong>🔑 ${j.session_id}</strong></div><div class="journey-steps">${j.steps.map(s => `<span class="journey-step">${s.title || 'Страница'}</span>`).join('')}</div></div>
+            `).join('');
+        }
+
+        // ========== NEW: EXTENDED ANALYTICS LOADING ==========
+        async function loadDeviceBreakdown() {
+            const siteId = document.getElementById('siteSelect').value;
+            const days = document.getElementById('periodSelect').value;
+            const resp = await fetch(`/api/metrics/device-breakdown?site_id=${siteId}&days=${days}`);
+            const data = await resp.json();
+            if (deviceChart) deviceChart.destroy();
+            deviceChart = new Chart(document.getElementById('deviceChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.data,
+                        backgroundColor: ['#2563eb', '#dc2626', '#eab308', '#64748b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } }
+            });
+        }
+
+        async function loadHourlyActivity() {
+            const siteId = document.getElementById('siteSelect').value;
+            const days = document.getElementById('periodSelect').value;
+            const resp = await fetch(`/api/metrics/hourly-activity?site_id=${siteId}&days=${days}`);
+            const data = await resp.json();
+            if (hourlyChart) hourlyChart.destroy();
+            hourlyChart = new Chart(document.getElementById('hourlyChart'), {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Обращений',
+                        data: data.data,
+                        backgroundColor: '#dc2626',
+                        borderRadius: 8
+                    }]
+                },
+                options: { responsive: true, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw} обращений` } } } }
+            });
+        }
+
+        async function loadTopPages() {
+            const siteId = document.getElementById('siteSelect').value;
+            const days = document.getElementById('periodSelect').value;
+            const resp = await fetch(`/api/metrics/pageviews-top?site_id=${siteId}&days=${days}&limit=10`);
+            const pages = await resp.json();
+            const container = document.getElementById('topPagesList');
+            if (pages.length === 0) {
+                container.innerHTML = '<div class="loading">Нет данных</div>';
+                return;
+            }
+            container.innerHTML = pages.map((p, i) => `
+                <div class="top-pages-item">
+                    <span style="color: #dc2626; font-weight: 600;">${i + 1}.</span>
+                    <span style="flex: 1; margin-left: 10px;">${p.url}</span>
+                    <span style="color: #22c55e; font-weight: 600;">${p.views} 👁️</span>
+                </div>
+            `).join('');
+        }
+
+        async function loadKeyMetrics() {
+            const siteId = document.getElementById('siteSelect').value;
+            const days = document.getElementById('periodSelect').value;
+            const [bounceResp, durationResp, realtimeResp] = await Promise.all([
+                fetch(`/api/metrics/bounce-rate?site_id=${siteId}&days=${days}`),
+                fetch(`/api/metrics/avg-session-duration?site_id=${siteId}&days=${days}`),
+                fetch(`/api/metrics/real-time?site_id=${siteId}`)
+            ]);
+            const bounce = await bounceResp.json();
+            const duration = await durationResp.json();
+            const realtime = await realtimeResp.json();
+            const container = document.getElementById('keyMetrics');
+            container.innerHTML = `
+                <div class="key-metrics-grid">
+                    <div class="key-metric-card">
+                        <div style="font-size: 28px; font-weight: 800; color: #dc2626;">${bounce.bounce_rate}%</div>
+                        <div style="font-size: 11px; color: #64748b;">Показатель отказов</div>
+                    </div>
+                    <div class="key-metric-card">
+                        <div style="font-size: 28px; font-weight: 800; color: #22c55e;">${duration.avg_duration_minutes} мин</div>
+                        <div style="font-size: 11px; color: #64748b;">Средняя сессия</div>
+                    </div>
+                    <div class="key-metric-card">
+                        <div style="font-size: 28px; font-weight: 800; color: #2563eb;">${realtime.active_users}</div>
+                        <div style="font-size: 11px; color: #64748b;">Активны сейчас</div>
+                    </div>
+                    <div class="key-metric-card">
+                        <div style="font-size: 28px; font-weight: 800; color: #eab308;">${realtime.events_last_5min}</div>
+                        <div style="font-size: 11px; color: #64748b;">Событий за 5 мин</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ========== FILTERS & COMPARE ==========
+        async function loadComparisonPeriods(dateFrom, dateTo) {
+            const siteId = document.getElementById('siteSelect').value;
+            const startDate = new Date(dateFrom);
+            const endDate = new Date(dateTo);
+            const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+            const prevStart = new Date(startDate);
+            prevStart.setDate(prevStart.getDate() - daysDiff - 1);
+            const prevEnd = new Date(startDate);
+            prevEnd.setDate(prevEnd.getDate() - 1);
+            const resp = await fetch(`/api/compare/periods?site_id=${siteId}&period1_start=${dateFrom}&period1_end=${dateTo}&period2_start=${prevStart.toISOString().split('T')[0]}&period2_end=${prevEnd.toISOString().split('T')[0]}`);
+            const data = await resp.json();
+            document.getElementById('period1Stats').innerHTML = `<p>📄 Просмотры: ${data.period1.pageviews}</p><p>📝 Отправки: ${data.period1.submits}</p><p>📊 Конверсия: ${data.period1.conversion_rate}%</p><p>📅 ${data.period1.start} — ${data.period1.end}</p>`;
+            document.getElementById('period2Stats').innerHTML = `<p>📄 Просмотры: ${data.period2.pageviews}</p><p>📝 Отправки: ${data.period2.submits}</p><p>📊 Конверсия: ${data.period2.conversion_rate}%</p><p>📅 ${data.period2.start} — ${data.period2.end}</p>`;
+            document.getElementById('comparisonChanges').innerHTML = `
+                <p>📄 Просмотры: <span class="${data.comparison.pageviews_change >= 0 ? 'change-positive' : 'change-negative'}">${data.comparison.pageviews_change >= 0 ? '+' : ''}${data.comparison.pageviews_change}%</span></p>
+                <p>📝 Отправки: <span class="${data.comparison.submits_change >= 0 ? 'change-positive' : 'change-negative'}">${data.comparison.submits_change >= 0 ? '+' : ''}${data.comparison.submits_change}%</span></p>
+                <p>📊 Конверсия: <span class="${data.comparison.conversion_change >= 0 ? 'change-positive' : 'change-negative'}">${data.comparison.conversion_change >= 0 ? '+' : ''}${data.comparison.conversion_change}%</span></p>
+            `;
+        }
+
+        async function applyFilters() {
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            const compare = document.getElementById('compareCheckbox').checked;
+            if (compare && dateFrom && dateTo) {
+                document.getElementById('comparisonPanel').style.display = 'block';
+                await loadComparisonPeriods(dateFrom, dateTo);
+            } else {
+                document.getElementById('comparisonPanel').style.display = 'none';
+            }
+            refreshAll();
+        }
+
+        // ========== EXPORT ==========
+        function exportData(format) {
+            const siteId = document.getElementById('siteSelect').value;
+            const days = document.getElementById('periodSelect').value;
+            window.open(`/api/export/metrics?site_id=${siteId}&days=${days}&format=${format}`, '_blank');
+        }
+
+        // ========== REFRESH ALL ==========
+        async function refreshAll() {
+            updateTimestamp();
+            await loadOverview();
+            await loadTrends();
+            await loadWebVitals();
+            await loadFunnel();
+            await loadAnomalies();
+            await loadAlerts();
+            await loadJourneys();
+            await loadDeviceBreakdown();
+            await loadHourlyActivity();
+            await loadTopPages();
+            await loadKeyMetrics();
+        }
+
+        // ========== EVENT LISTENERS ==========
+        document.getElementById('siteSelect').addEventListener('change', function() {
+            subscribeToSite(this.value);
+            refreshAll();
+        });
+        document.getElementById('periodSelect').addEventListener('change', () => refreshAll());
+
+        // Request notification permission
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // ========== INITIALIZATION ==========
+        initWebSocket();
+        const initialSiteId = document.getElementById('siteSelect').value;
+        subscribeToSite(initialSiteId);
+        refreshAll();
+    </script>
+</body>
+</html>

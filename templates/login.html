@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Монитор обращений граждан</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            font-size: 28px;
+            color: #1a73e8;
+            margin-bottom: 5px;
+        }
+
+        .logo p {
+            color: #5f6368;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #202124;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #dadce0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 3px rgba(26,115,232,0.2);
+        }
+
+        .checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .checkbox input {
+            width: auto;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1557b0;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-error {
+            background: #fce8e6;
+            color: #c5221f;
+            border: 1px solid #fce8e6;
+        }
+
+        .alert-success {
+            background: #e6f4ea;
+            color: #137333;
+            border: 1px solid #e6f4ea;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e8eaed;
+            font-size: 12px;
+            color: #5f6368;
+        }
+
+        .security-badge {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #5f6368;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>📊 Монитор обращений</h1>
+            <p>Система аналитики для госорганов</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="form-group">
+                <label>👤 Имя пользователя</label>
+                <input type="text" name="username" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label>🔒 Пароль</label>
+                <input type="password" name="password" required>
+            </div>
+
+            <div class="checkbox">
+                <input type="checkbox" name="remember" id="remember">
+                <label for="remember" style="margin:0">Запомнить меня</label>
+            </div>
+
+            <button type="submit">Войти в систему</button>
+        </form>
+
+        <div class="security-badge">
+            🔒 Данные хранятся на серверах организации<br>
+            ⚡ Анонимизация IP в соответствии с 152-ФЗ
+        </div>
+
+        <div class="footer">
+            Собственная разработка<br>
+            Версия 2.0 (Безопасная)
+        </div>
+    </div>
+</body>
+</html>

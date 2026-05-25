@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль пользователя - Монитор обращений граждан</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .nav {
+            margin-top: 15px;
+        }
+
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 5px 10px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .nav a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Container */
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        /* Profile Card */
+        .profile-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e8eaed;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: #1a73e8;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+        }
+
+        .profile-title h2 {
+            font-size: 24px;
+            color: #202124;
+            margin-bottom: 5px;
+        }
+
+        .profile-title p {
+            color: #5f6368;
+            font-size: 14px;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 8px;
+        }
+
+        .role-admin {
+            background: #fce8e6;
+            color: #c5221f;
+        }
+
+        .role-analyst {
+            background: #e8f0fe;
+            color: #1a73e8;
+        }
+
+        .role-viewer {
+            background: #e6f4ea;
+            color: #137333;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #202124;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #dadce0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.2s;
+            background: #f8f9fa;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #1a73e8;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(26,115,232,0.2);
+        }
+
+        input:disabled {
+            background: #f1f3f4;
+            color: #5f6368;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #1a73e8;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1557b0;
+        }
+
+        .btn-secondary {
+            background: #e8eaed;
+            color: #202124;
+        }
+
+        .btn-secondary:hover {
+            background: #dadce0;
+        }
+
+        .btn-danger {
+            background: #c5221f;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #a11d1a;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #e6f4ea;
+            color: #137333;
+            border: 1px solid #e6f4ea;
+        }
+
+        .alert-error {
+            background: #fce8e6;
+            color: #c5221f;
+            border: 1px solid #fce8e6;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #5f6368;
+            margin-top: 5px;
+        }
+
+        .divider {
+            height: 1px;
+            background: #e8eaed;
+            margin: 25px 0;
+        }
+
+        .security-info {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .security-info h4 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #202124;
+        }
+
+        .security-info p {
+            font-size: 12px;
+            color: #5f6368;
+            margin-bottom: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #5f6368;
+            font-size: 12px;
+            border-top: 1px solid #e8eaed;
+            margin-top: 30px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #1a73e8;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .container {
+                padding: 0 15px;
+            }
+
+            .profile-card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Монитор обращений граждан</h1>
+        <p>Система сбора и визуализации метрик сайта администрации</p>
+        <div class="nav">
+            <a href="{{ url_for('dashboard') }}">📈 Дашборд</a>
+            <a href="{{ url_for('profile') }}" style="background: rgba(255,255,255,0.2);">👤 Профиль</a>
+            <a href="{{ url_for('logout') }}">🚪 Выйти</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <a href="{{ url_for('dashboard') }}" class="back-link">← Вернуться на дашборд</a>
+
+        <div class="profile-card">
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    👤
+                </div>
+                <div class="profile-title">
+                    <h2>{{ user.username }}</h2>
+                    <p>
+                        {% if user.email %}
+                            {{ user.email }}
+                        {% else %}
+                            Email не указан
+                        {% endif %}
+                    </p>
+                    <span class="role-badge
+                        {% if user.role == 'admin' %}role-admin
+                        {% elif user.role == 'analyst' %}role-analyst
+                        {% else %}role-viewer{% endif %}">
+                        {% if user.role == 'admin' %}👑 Администратор
+                        {% elif user.role == 'analyst' %}📊 Аналитик
+                        {% else %}👁️ Наблюдатель{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('change_password') }}">
+                <h3 style="margin-bottom: 20px; color: #202124;">🔐 Смена пароля</h3>
+
+                <div class="form-group">
+                    <label>Текущий пароль</label>
+                    <input type="password" name="old_password" required placeholder="Введите текущий пароль">
+                </div>
+
+                <div class="form-group">
+                    <label>Новый пароль</label>
+                    <input type="password" name="new_password" required placeholder="Введите новый пароль (мин. 6 символов)">
+                    <div class="info-text">Пароль должен содержать не менее 6 символов</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Подтверждение нового пароля</label>
+                    <input type="password" name="confirm_password" required placeholder="Повторите новый пароль">
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary">Изменить пароль</button>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Отмена</a>
+                </div>
+            </form>
+
+            <div class="divider"></div>
+
+            <div class="security-info">
+                <h4>🔒 Информация о безопасности</h4>
+                <p>• Ваши данные хранятся на защищённых серверах организации</p>
+                <p>• Все действия в системе логируются и аудитируются</p>
+                <p>• IP-адреса посетителей анонимизируются в соответствии с 152-ФЗ</p>
+                <p>• Последний вход:
+                    {% if user.last_login %}
+                        {{ user.last_login.strftime('%d.%m.%Y %H:%M') }}
+                    {% else %}
+                        первый вход в систему
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Монитор обращений граждан — собственная разработка | Данные хранятся на серверах организации</p>
+    </div>
+</body>
+</html>
