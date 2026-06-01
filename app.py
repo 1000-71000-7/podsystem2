@@ -40,7 +40,7 @@ db.init_app(app)
 cache = Cache(app)
 
 # Инициализация SocketIO (WebSocket)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", manage_session=False)
 
 # Настройка логирования
 logging.basicConfig(
