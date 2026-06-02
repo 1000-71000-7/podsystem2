@@ -1,10 +1,8 @@
-
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, Response
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_caching import Cache
-from flask_socketio import SocketIO, emit, join_room, leave_room
 from datetime import datetime, timedelta, timezone
 from config import Config
 from models import db, User, Site, Event, PageSpeedMetric, DailyAggregate, FormInteraction, CoreWebVitals, \
@@ -51,73 +49,12 @@ db.init_app(app)
 # Инициализация кэша
 cache = Cache(app)
 
-# Инициализация SocketIO (WebSocket)
-# socketio = SocketIO(app, cors_allowed_origins="*", manage_session=False)
-
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-
-# ========== WEBSOCKET СОБЫТИЯ ==========
-
-active_rooms = {}
-
-
-@socketio.on('connect')
-def handle_connect():
-    client_id = request.sid
-    logger.info(f"WebSocket client connected: {client_id}")
-    emit('connected', {'message': 'Connected', 'timestamp': datetime.now(timezone.utc).isoformat(), 'client_id': client_id})
-
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    client_id = request.sid
-    logger.info(f"WebSocket client disconnected: {client_id}")
-    for room, clients in active_rooms.items():
-        if client_id in clients:
-            clients.remove(client_id)
-
-
-@socketio.on('subscribe')
-def handle_subscribe(data):
-    site_id = data.get('site_id')
-    client_id = request.sid
-    if site_id:
-        room_name = f'site_{site_id}'
-        join_room(room_name)
-        if room_name not in active_rooms:
-            active_rooms[room_name] = []
-        if client_id not in active_rooms[room_name]:
-            active_rooms[room_name].append(client_id)
-        logger.info(f"Client {client_id} subscribed to site {site_id}")
-        emit('subscribed', {'site_id': site_id, 'message': f'Subscribed to site {site_id}'})
-
-
-@socketio.on('unsubscribe')
-def handle_unsubscribe(data):
-    site_id = data.get('site_id')
-    client_id = request.sid
-    if site_id:
-        room_name = f'site_{site_id}'
-        leave_room(room_name)
-        if room_name in active_rooms and client_id in active_rooms[room_name]:
-            active_rooms[room_name].remove(client_id)
-        logger.info(f"Client {client_id} unsubscribed from site {site_id}")
-
-
-def emit_metrics_update(site_id, metrics_data):
-    try:
-        room_name = f'site_{site_id}'
-        socketio.emit('metrics_update', {
-            'site_id': site_id, 'data': metrics_data, 'timestamp': datetime.now(timezone.utc).isoformat()
-        }, room=room_name)
-    except Exception as e:
-        logger.error(f"Failed to emit metrics update: {e}")
 
 
 # ========== КЛАСС ДЛЯ EMAIL УВЕДОМЛЕНИЙ ==========
@@ -694,7 +631,6 @@ def collect_event():
                 last_form.was_submitted = True
                 if event_data.get('time_spent'):
                     last_form.time_spent_seconds = event_data.get('time_spent')
-            emit_metrics_update(site.id, {'total_views': 0, 'total_submits': 1, 'conversion_rate': 0})
         db.session.commit()
         cache.delete_memoized(get_overview)
         cache.delete_memoized(get_trends)
