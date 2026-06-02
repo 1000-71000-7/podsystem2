@@ -1,5 +1,6 @@
 import eventlet
 eventlet.monkey_patch()
+
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, Response
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
 from flask_limiter import Limiter
@@ -35,10 +36,12 @@ from flask_cors import CORS
 # Инициализация приложения
 app = Flask(__name__)
 
+# Разрешенные источники для CORS
 ALLOWED_ORIGINS = [
-    "https://1000-71000-7-podsystem2-b5b5.twc1.net", # Ваш админский сайт (localhost:5000 для тестов)
-    "https://1000-71000-7-2-73eb.twc1.net",          # ВАШ САЙТ ОБРАЩЕНИЙ - ЭТО САМОЕ ВАЖНОЕ!
-    "http://localhost:5000",                         # Для локальной разработки
+    "https://1000-71000-7-podsystem2-b5b5.twc1.net",
+    "https://1000-71000-7-2-73eb.twc1.net",
+    "http://localhost:5000",
+    "http://localhost:8000"
 ]
 
 CORS(app, origins=ALLOWED_ORIGINS)
@@ -441,7 +444,6 @@ def start_background_tasks():
 # ========== ЗАПУСК ПЛАНИРОВЩИКА ОПОВЕЩЕНИЙ ==========
 
 def start_alert_scheduler():
-    """Запуск планировщика оповещений в отдельном потоке"""
     try:
         from alerts import run_scheduler
         thread = threading.Thread(target=run_scheduler, daemon=True)
@@ -739,7 +741,6 @@ def dashboard():
 @login_required
 @require_role('admin')
 def admin_users():
-    """Страница управления пользователями (только для админов)"""
     return render_template('admin_users.html', user=current_user)
 
 
@@ -1078,7 +1079,6 @@ def create_site():
 @app.route('/api/metrics/device-breakdown')
 @login_required
 def get_device_breakdown():
-    """Распределение по устройствам"""
     try:
         site_id = request.args.get('site_id', 1, type=int)
         days = request.args.get('days', 30, type=int)
@@ -1107,7 +1107,6 @@ def get_device_breakdown():
 @app.route('/api/metrics/hourly-activity')
 @login_required
 def get_hourly_activity():
-    """Активность по часам"""
     try:
         site_id = request.args.get('site_id', 1, type=int)
         days = request.args.get('days', 30, type=int)
@@ -1127,7 +1126,6 @@ def get_hourly_activity():
 @app.route('/api/metrics/pageviews-top')
 @login_required
 def get_top_pages():
-    """Самые популярные страницы"""
     try:
         site_id = request.args.get('site_id', 1, type=int)
         days = request.args.get('days', 30, type=int)
@@ -1145,7 +1143,6 @@ def get_top_pages():
 @app.route('/api/metrics/bounce-rate')
 @login_required
 def get_bounce_rate():
-    """Показатель отказов"""
     try:
         site_id = request.args.get('site_id', 1, type=int)
         days = request.args.get('days', 30, type=int)
@@ -1166,7 +1163,6 @@ def get_bounce_rate():
 @app.route('/api/metrics/avg-session-duration')
 @login_required
 def get_avg_session_duration():
-    """Средняя длительность сессии"""
     try:
         site_id = request.args.get('site_id', 1, type=int)
         days = request.args.get('days', 30, type=int)
@@ -1192,7 +1188,6 @@ def get_avg_session_duration():
 @app.route('/api/metrics/real-time')
 @login_required
 def get_real_time():
-    """Реальное время: активные пользователи за последние 5 минут"""
     try:
         site_id = request.args.get('site_id', 1, type=int)
         five_min_ago = datetime.now(timezone.utc) - timedelta(minutes=5)
@@ -1229,8 +1224,7 @@ def export_metrics():
                 daily_data[day]['form_starts'] += 1
         result = [{'date': day, 'pageviews': data['pageviews'], 'form_starts': data['form_starts'],
                    'submits': data['submits'],
-                   'conversion_rate': round(data['submits'] / data['pageviews'] * 100, 2) if data[
-                                                                                                 'pageviews'] > 0 else 0}
+                   'conversion_rate': round(data['submits'] / data['pageviews'] * 100, 2) if data['pageviews'] > 0 else 0}
                   for day, data in sorted(daily_data.items())]
         if format_type == 'csv':
             return ReportExporter.export_to_csv(result, 'metrics_report')
@@ -1325,8 +1319,7 @@ def compare_periods():
         return jsonify({'period1': {'start': period1_start, 'end': period1_end, **period1},
                         'period2': {'start': period2_start, 'end': period2_end, **period2},
                         'comparison': {'pageviews_change': round(
-                            (period1['pageviews'] - period2['pageviews']) / period2['pageviews'] * 100, 1) if period2[
-                                                                                                                  'pageviews'] > 0 else 0,
+                            (period1['pageviews'] - period2['pageviews']) / period2['pageviews'] * 100, 1) if period2['pageviews'] > 0 else 0,
                                        'submits_change': round(
                                            (period1['submits'] - period2['submits']) / period2['submits'] * 100, 1) if
                                        period2['submits'] > 0 else 0,
@@ -1410,43 +1403,8 @@ def init_db():
             logger.error(f"Database initialization error: {e}")
 
 
-# ========== ЗАПУСК ==========
-
-if __name__ == '__main__':
-    init_db()
-    init_email_notifier(app)
-    start_background_tasks()
-    start_alert_scheduler()
-
-    print("\n" + "=" * 70)
-    print("🚀 МОНИТОР ОБРАЩЕНИЙ ГРАЖДАН - ПОЛНАЯ ВЕРСИЯ")
-    print("=" * 70)
-    print(f"📊 Дашборд: http://localhost:{app.config.get('PORT', 5000)}")
-    print(f"👤 Логин: {app.config['ADMIN_USERNAME']}")
-    print(f"🔑 Пароль: {app.config['ADMIN_PASSWORD']}")
-    print("=" * 70)
-    print("📝 Функционал:")
-    print("   ✅ Аутентификация и роли (admin/analyst/viewer)")
-    print("   ✅ Анонимизация IP (152-ФЗ)")
-    print("   ✅ Rate limiting и CSRF защита")
-    print("   ✅ Кэширование и оптимизация БД")
-    print("   ✅ Экспорт отчётов (CSV/Excel/PDF)")
-    print("   ✅ Фильтрация по датам и сравнение периодов")
-    print("   ✅ Email уведомления")
-    print("   ✅ WebSocket реальное время")
-    print("   ✅ Анализ по устройствам")
-    print("   ✅ Активность по часам")
-    print("   ✅ Популярные страницы")
-    print("   ✅ Показатель отказов")
-    print("   ✅ Средняя длительность сессии")
-    print("   ✅ Реальное время (активные пользователи)")
-    print("   ✅ Управление пользователями (только админ)")
-    print("   ✅ Планировщик оповещений")
-    print("=" * 70 + "\n")
-
-    socketio.run(
-        app,
-        debug=app.config.get('FLASK_DEBUG', False),
-        host=app.config.get('HOST', '0.0.0.0'),
-        port=app.config.get('PORT', 5000)
-    )
+# Запуск инициализации (без if __name__ == '__main__' для Gunicorn)
+init_db()
+init_email_notifier(app)
+start_background_tasks()
+start_alert_scheduler()
