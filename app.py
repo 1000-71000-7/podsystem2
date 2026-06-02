@@ -1,5 +1,3 @@
-from gevent import monkey
-monkey.patch_all()
 
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, Response
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
@@ -54,7 +52,7 @@ db.init_app(app)
 cache = Cache(app)
 
 # Инициализация SocketIO (WebSocket)
-socketio = SocketIO(app, cors_allowed_origins="*", manage_session=False)
+# socketio = SocketIO(app, cors_allowed_origins="*", manage_session=False)
 
 # Настройка логирования
 logging.basicConfig(
