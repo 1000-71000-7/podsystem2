@@ -28,9 +28,18 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from export import ReportExporter
+from flask_cors import CORS
 
 # Инициализация приложения
 app = Flask(__name__)
+
+ALLOWED_ORIGINS = [
+    "https://1000-71000-7-podsystem2-b5b5.twc1.net", # Ваш админский сайт (localhost:5000 для тестов)
+    "https://1000-71000-7-2-73eb.twc1.net",          # ВАШ САЙТ ОБРАЩЕНИЙ - ЭТО САМОЕ ВАЖНОЕ!
+    "http://localhost:5000",                         # Для локальной разработки
+]
+
+CORS(app, origins=ALLOWED_ORIGINS)
 app.config.from_object(Config)
 
 # Инициализация БД
